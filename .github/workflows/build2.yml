@@ -9,7 +9,7 @@ jobs:
         with:
           submodules: "true"
 
-       Stein name: create build directory
+      - name: create build directory
         working-directory: ./ACE
         run: mkdir build
 
@@ -43,7 +43,7 @@ jobs:
           submodules: "true"
       - name: "apt update"
         run: sudo apt-get update
-      - name: "install build dependecies"
+      - name: "install build dependencies"
         run: sudo apt-get install openjdk-17-jdk-headless apktool gradle
 
       - name: generating code for injection
