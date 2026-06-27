@@ -9,38 +9,30 @@ jobs:
         with:
           submodules: "true"
 
-      - name: "apt update"
-        run: sudo apt-get update
-      - name: "install compiler and build tools"
-        run: sudo apt-get install build-essential
-
       - name: create build directory
         working-directory: ./ACE
         run: mkdir build
 
-      # release build
-      - name: release build
+      # 🛠️ Cross-compile the C++ backend using the Android SDK/NDK included on the GitHub runner
+      - name: Cross-Compile Release for Android ARM64
         working-directory: ./ACE/build
         run: |
-          cmake -DCMAKE_BUILD_TYPE=Release ../ 
+          cmake \
+            -DCMAKE_TOOLCHAIN_FILE=${ANDROID_SDK_ROOT}/ndk/$(ls ${ANDROID_SDK_ROOT}/ndk | sort -V | tail -n 1)/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-23 \
+            -DCMAKE_BUILD_TYPE=Release \
+            ../
           make -j$(nproc)
 
-      # 🔍 Debug step to see exactly where CMake put the binaries
-      - name: List Build Directory Output
-        working-directory: ./ACE/build
-        run: |
-          echo "=== Content of build directory ==="
-          ls -R
-
-      # Save the compiled native tools so the ATG job can grab them
       - name: Upload ACE Compiled Binaries
         uses: actions/upload-artifact@v4
         with:
           name: ace-native-bins
           path: |
-            ./ACE/build/**/util_client
-            ./ACE/build/**/ace
-          if-no-files-found: error # 🛑 Forces this job to fail right here if paths are wrong
+            ./ACE/build/util_client
+            ./ACE/build/ace
+          if-no-files-found: error
 
   Modder-linux:
     runs-on: ubuntu-22.04
@@ -103,6 +95,11 @@ jobs:
         run: |
           fdfind java-17 | xargs readlink -f | awk '{print "JAVA_HOME="$1""}' >> $GITHUB_ENV
 
+      # Cleanly generate the exact nested tree target
+      - name: Setup Target Directories
+        run: mkdir -p ./ATG/app/src/main/assets/bin/ACE/arm64-v8a/
+
+      # This drops the binaries directly where AssetManager wants them
       - name: Download ACE Binaries
         uses: actions/download-artifact@v4
         with:
